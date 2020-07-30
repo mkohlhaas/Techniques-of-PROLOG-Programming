@@ -1,0 +1,20 @@
+%90 _suspect X murdered _victim Y:
+    _suspect X had a motive to kill _victim Y,
+    _suspect X had the potential to kill _victim Y.
+%80 _suspect X had a motive to kill _victim Y:
+    _suspect X had a serious conflict with _victim Y.
+%95 _suspect X had a motive to kill _victim Y:
+    _suspect X is the life-insurance beneficiary of _victim Y.
+%60 _suspect X had a motive to kill _victim Y:
+    _suspect X had a secret known to _victim Y.
+%90 _suspect X had the potential to kill _victim Y:
+    _suspect X might appear near _victim Y,
+    _suspect X has no _alibi.
+_suspect 'Alan Smith' had a serious conflict with _victim 'J.R.'.
+_suspect 'Sue R.' is the life-insurance beneficiary of _victim 'J.R.'.
+_suspect 'Sue R.' had a secret known to _victim 'W.K.'.
+%90 _suspect 'Sue R.' might appear near _victim 'J.R.'.
+%70 _suspect 'Alan Smith' might appear near _victim 'J.R.'.
+_suspect 'Alan Smith' has _alibi 'John Cooper'.
+_suspect 'Alan Smith' has _alibi 'Peter Falk'.
+bye.

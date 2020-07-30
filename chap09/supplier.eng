@@ -1,0 +1,9 @@
+_agent X is a fractional supplier:
+    _agent X not supply some _item.
+_agent 'Adams & Sons' supply _item b1.
+_agent 'Adams & Sons' supply _item b2.
+_agent 'Adams & Sons' supply _item b3.
+_agent 'Johnny Ltd' supply _item b1.
+_agent 'Johnny Ltd' supply _item b2.
+_agent 'Mitre 10' supply _item b1.
+bye.

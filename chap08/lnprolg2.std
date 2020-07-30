@@ -1,0 +1,722 @@
+% LNPROLOG (Version A2: in standard Prolog, with tracer & debugger)
+% =================================================================
+% This file contains the complete code of LnProlog with a debugger
+% and a tracer, written in standard Prolog (The original version is
+% written in Arity-Prolog and is stored in file \chap8\lnprolg2.ari).
+% Note: the builtin predicate "system" used in this program (to test
+% if a predicate is a builtin predicate) may correspond to "sys"
+% (or something else) in your Prolog system. In which case, change
+% this by using the following command:
+%     ?- assert((system(F/N) :- sys(F))).
+% Also, the predicate "cls" is used in this system to clear the screen.
+% If your Prolog system provides a different builtin predicate, say
+% "clscr", for the same purpose, then enter the following command:
+%     ?- assert((cls :- clscr)).
+% In case, your Prolog system has no such predicate, then define it using
+% the following clauses:
+%      cls :- cursor(&:,0,0),clear(23,80).
+%
+%      clear(0,0) :- !,cursor(&:,0,0).
+%      clear(M,0) :- !,nl,M1 is M-1,clear(M1,80).
+%      clear(M,N) :- put(32),N1 is N-1,clear(M,N1).
+%
+% where, the goal "cursor(&:,0,0)" moves the cursor to row 0 and column 0
+% (find an equivalent predicate in your Prolog system). If your Prolog
+% system has no such equivalent predicate, then remove all goals "cls"
+% from this system before consulting it.
+%   Another note: if your Prolog system already has a builtin predicate
+% "all/1" or "all/2", then change the predicate name "all" in this system
+% to "allx", say, before consulting this system.
+%
+% To run this system, perform the following steps:
+%
+% a) Consult this file.
+% b) Enter the following query to invoke the system:
+%        ?- lnprolog.
+%    A prompt ?: will appear. From then on, you will be working
+%    with LnProlg.
+%
+% c) Enter (or consult) the following program clauses:
+%        ?: p(X) :- a(X),b(X).
+%        ?: p(X) :- c(X).
+%        ?: a(X) :- d(X).
+%        ?: d(1) :- true.
+%        ?: d(2) :- true.
+%        ?: d(X) :- f(X),g(X).
+%        ?: f(3) :- true.
+%        ?: f(X) :- h(X).
+%        ?: b(1) :- true.
+%        ?: b(3) :- true.
+%        ?: b(4) :- true.
+%        ?: g(3) :- true.
+%        ?: g(4) :- true.
+%        ?: h(4) :- true.
+%        ?: c(5) :- true.
+%    Then turn the tracer on and trace the execution of the goal p(X)
+%    by entering the following queries (press 'c' or <return> at each
+%    prompt '>' of the tracer):
+%        ?: traceon.
+%        ?: p(X).
+%    When the tracer pauses to display an answer and the prompt ->,
+%    you may type ; to continue tracing alternative execution, or
+%    you may press any key to terminate (You may also press <Ctrl-Break>
+%    to exit LnProlog without leaving the underlying Prolog system, but
+%    let's continue with the experiment).
+%
+% d) Now turn the tracer off and reset the system by using the queries:
+%        ?: traceoff.
+%        ?: reset.
+%    Then remove the above program by using the queries: abolish(p/1),
+%    abolish(a/1),abolish(b/1),abolish(c/1),abolish(d/1),abolish(f/1),
+%    abolish(g/1),abolish(h/1).
+%    Then enter (or consult) the following program clauses:
+%        ?: gcd(X,0,X) :- X > 0.
+%        ?: gcd(X,Y,Z) :- X < Y, gcd(Y,X,Z).
+%        ?: gcd(X,Y,Y) :- X >= Y, Y > 0, X1 is X mod Y, gcd(Y,X1,Z).
+%    and turn on the debugger to debug the program by using the
+%    following queries. When the answer is displayed, press 'w' to
+%    indicate that the answer is wrong. Then follow the debugger's
+%    instruction to find the erroneous clause in the program.
+%        ?: debugon.
+%        ?: gcd(14,35,Z).
+%        Z = 14 -> w
+%
+% e) Now, reset the system again by using the query:
+%        ?: reset.
+%    and remove the above program by using the query: abolish(gcd/3).
+%    Then enter (or consult) the following program clauses:
+%        ?: least_num(X,[H|T]) :- least_num(Y,T), min(H,Y,X).
+%        ?: min(X,Y,X) :- X =< Y.
+%        ?: min(X,Y,Y) :- X > Y.
+%    Then enter the following query to find the least element of a list.
+%    When the answer is displayed, press 'w' to indicate that the answer
+%    is wrong. Then follow the debugger's instruction to find the error
+%    in the program.
+%        ?: least_num(X,[4,2,1,3]).
+%        no -> w
+%    To turn off the tracer and the debugger, enter the queries:
+%        ?: traceoff.
+%        ?: debugoff.
+%
+%    Final note: Unlike the original version of LnProlog, this standard
+%    version does not allow the use of the symbol ";" as an "or"
+%    predicate.
+% =========================== LNPROLOG ==============================
+% ================ A PROLOG SYSTEM THAT SUPPORTS ====================
+% =========== LOGICAL NEGATION AND QUANTIFIED QUERIES ===============
+% ============= AND ALSO HAS A DEBUGGER AND A TRACER ================
+% ========================= (Version A2) ============================
+% ===================================================================
+%
+% TOP LEVEL CONTROL
+% ===================================================================
+:- op(500,xfy,:).
+
+lnprolog :-
+    introduction,
+    repeat,
+        receive_query(G,VL),
+        process_query(G,VL),
+    fail.
+
+introduction :-
+    cls,nl,
+    nl,write('======================LNPROLOG======================'),
+    nl,write('==== is standard Prolog plus a logical negator. ===='),
+    nl,write('====In LNPROLOG, the negating predicate is "non"===='),
+    nl,write('==== and the success of non(A) provides values  ===='),
+    nl,write('==== for the variables of A so that A is false. ===='),
+    nl,write('====================================================').
+
+receive_query(G,VL) :-
+    nl,nl,write('?:'),write(' '),
+    readline(L),
+    convert_query(L,G,VL).
+
+convert_query(L,G,VL) :-
+    tokenize(L,TL),
+    (member((':-'),TL),rule(G,[],VL,TL,[]),!;
+                  conj_term(G,[],VL,TL,[]),!).
+convert_query(_,_,_) :- nl,write('syntax error'),!,fail.
+
+% -------------------------------------------------------------------
+% PROCESS QUERY
+% -------------------------------------------------------------------
+process_query(G,VL) :- special_query(G),!,G.
+process_query((A :- B),VL) :- !,process_clause((A :- B)).
+process_query(G,VL) :- G =.. [P|Args],
+    (member(P,[consult,reconsult]),!,process_file(Args);
+     member(P,[assert,asserta,assertz]),!,process_assert(Args);
+     true),
+    process_goal(G,VL).
+
+special_query(G) :-
+    member(G,[debugon,debugoff,traceon,traceoff]),!.
+
+debugon :- assert(debuggeur(on)),
+    nl,write('Display proof ? (y/n): '),
+    (get0(121),!,assert(displayproof(on)); true),nl.
+
+traceon :- assert(tracer(on)).
+
+debugoff :- retract(debuggeur(on)),
+    retract(displayproof(on)).
+
+traceoff :- retract(tracer(on)).
+
+process_clause(Clause) :-
+    extract_symbols(Clause),
+    assert(Clause),
+    nl,write(stored).
+
+process_file([Filename]) :-
+    see(Filename),
+    readfile,
+    seen.
+
+readfile :-
+    repeat,
+        read(Clause),
+        (Clause = end_of_file,!;
+        extract_symbols(Clause),fail).
+
+process_assert([Clause]) :-
+    extract_symbols(Clause).
+
+process_goal(Goal,VL) :-
+    reverse(VL,[],VL1),
+    evaluate(Goal,VL1),
+    remove(answer(X)).
+
+% -------------------------------------------------------------------
+% EVALUATE A GOAL
+% -------------------------------------------------------------------
+evaluate(Goal,VL) :-
+    (debuggeur(on),!, prove_goal(Goal,VL);
+     tracer(on),!,   tracex(Goal,0);
+                     call_goal(Goal,VL)),!.
+evaluate(_,_).
+
+prove_goal(Goal,VL) :-
+    prove(Goal,20,Result,Proof),
+    process_result(VL,Result),
+    process_response(Result,Proof),!.
+
+call_goal(Goal,VL) :-
+    call(Goal), process_result(VL,yes),
+    (VL = [],!; process_response(yes,_)),!.
+call_goal(_,_) :- nl,write('no').
+
+process_result(_,no)   :- !,nl,write('no').
+process_result([],yes) :- !,nl,write('yes').
+process_result(VL,yes) :- duplicated_answer(VL),!,fail.
+process_result(VL,yes) :- print_answer(VL,VL1),
+    assert(answer(VL1)).
+
+print_answer([('_',V)|L],[('_',_)|L1]) :- !,
+    print_answer(L,L1).
+print_answer([(X,V)|L],[(X,V)|L1]) :-
+    nl,write(X),write(' = '),write(V),
+    print_answer(L,L1).
+print_answer([],[]).
+
+process_response(Result,Proof) :-
+    write(' -> '),get0(C),
+    (C = 59, !, fail;
+     C = 119,!, (debuggeur(on),!,error_type(Result,R),
+                     find_error(R,Proof,ErrorClause),
+                     (displayproof(on),!,nl,nl,write(Proof);true),
+                     print_error(ErrorClause);
+                 nl,write('Debugger is not on !'));
+     true).
+
+error_type(yes,0).
+error_type(no,1).
+
+print_error(ErrorClause) :-
+     nl,nl,write('Error Clause: '),write(ErrorClause).
+
+duplicated_answer(A) :-
+    answer(B),instanc(A,B).
+
+instanc(A,B) :-
+    var_list(A,L),bind_var(L,1),A = B.
+
+bind_var([],_).
+bind_var(['$@#'(N)|Vs],N) :- N1 is N+1,bind_var(Vs,N1).
+
+remove(A) :- retract(A),fail.
+remove(_) :- assert(answer('##')).
+
+answer('##').
+constsymbol('#','#').
+functsymbol('#').
+
+% -------------------------------------------------------------------
+% EXTRACT CONSTANT AND FUNCTION SYMBOLS
+% -------------------------------------------------------------------
+extract_symbols((A :- B)) :- !,extract_symbols((A,B)).
+extract_symbols((A;B)) :- !,extract_symbols((A,B)).
+extract_symbols((A,B)) :- !,extract_symbols(A),
+                            extract_symbols(B).
+extract_symbols(true) :- !.
+extract_symbols(not(A)) :- !,extract_symbols(A).
+extract_symbols(non(A)) :- !,extract_symbols(A).
+extract_symbols(A) :- A =.. [P|Args],!,extr_symb(Args).
+extract_symbols(_).
+
+extr_symb([]) :- !.
+extr_symb([A|As]) :- extracts(A),extr_symb(As).
+
+extracts(A) :- var(A),!.
+extracts(A) :- constant(A),!,
+    (constsymbol(A),!;assert(constsymbol(A))).
+extracts(A) :- A =.. [F|Args],functor(A,F,N),
+    (functsymbol(F,N),!; assert(functsymbol(F,N))),
+    extr_symb(Args).
+
+reset :-
+    abolish(constsymbol/1),
+    abolish(functsymbol/2).
+
+%--------------------------------------------------------------------
+% LNPROLOG'S LOGICAL NEGATION & QUATIFICATION
+%--------------------------------------------------------------------
+all(L,G) :- copy((L,G),(L1,G1)), L = L1,
+            G1,not(non(G)).
+all(G)  :-  G \= (A,B), not(non(G)).
+
+non(non(A)) :- !,A.
+
+non(A) :- var_list(A,L),eval_non(A,L).
+
+eval_non(A,L) :- not(A),!.
+eval_non(A,L) :- eval(A),uninstantiated(L),!,fail.
+eval_non(A,L) :- instantiate(L),re_var_list(L,VL),eval_non(A,VL).
+
+eval(A) :- A,!.
+uninstantiated(L) :- var_pure(L),unrestricted(L,0).
+
+var_pure([]) :- !.
+var_pure([X|Xs]) :- var(X),var_pure(Xs).
+
+unrestricted([],_) :- !.
+unrestricted([N|Xs],N) :- N1 is N+1,unrestricted(Xs,N1).
+
+instantiate([X|Xs]) :- get_term(X,Xs).
+instantiate([X|Xs]) :- instantiate(Xs).
+
+get_term(X,Xs) :- constsymbol(X).
+get_term(X,Xs) :- functsymbol(F,N),functor(X,F,N).
+get_term(X,Xs) :- get_var(X,Xs).
+
+get_var(X,[X|Xs]).
+get_var(X,[Y|Xs]) :- get_var(X,Xs).
+
+re_var_list(A,L) :- var_list(A,L1),shift_var(L1,L).
+
+shift_var([],[]) :- !.
+shift_var([X|L],L1) :- append(L,[X],L1).
+
+% -------------------------------------------------------------------
+% READ AN INPUT RULE OR QUERY
+% -------------------------------------------------------------------
+readline(L) :-
+    get0(C),
+    read_chars(C,[],L1),
+    reverse(L1,[],L).
+
+read_chars(13,[46|L],L) :- !,nl.
+read_chars(13,L,L1) :- !,
+    nl,get0(C),
+    read_chars(C,[32|L],L1).
+read_chars(8,[C|L],L1) :- !,
+    put(32),put(8),
+    get0(C1),
+    read_chars(C1,L,L1).
+read_chars(C,L,L1) :-
+    get0(C1),
+    read_chars(C1,[C|L],L1).
+
+reverse([],L,L).
+reverse([H|T],L,L1) :-
+    reverse(T,[H|L],L1).
+
+% ---------------------------------------------------------------
+% OBTAIN TOKENS FROM INPUT TEXT
+% ---------------------------------------------------------------
+tokenize([],[]).
+tokenize(CharList,[Token|TList]) :-
+    append(_,[C|List],CharList), C \= 32,!,
+    get_token([C|List],Token,Rest),
+    tokenize(Rest,TList).
+
+get_token(List,Token,Rest) :-
+    get_chars(List,Lchars,Rest),
+    name(Token,Lchars).
+
+get_chars(L,S,L1) :- separator(L,S,L1),!.
+get_chars([C|L],[C|Lc],L1) :-
+    check_start(S,C),
+    get_word_chars(S,L,Lc,L1).
+
+get_word_chars(S,L,Lc,L1) :-
+    check_end(S,L,Lc,L1).
+get_word_chars(S,[C|L],[C|Lc],L1) :-
+    legal_char(S,C),
+    get_word_chars(S,L,Lc,L1).
+
+legal_char(quote,C) :- C \= 39.
+legal_char(num,C)   :- digit(C).
+legal_char(symb,C)  :- valid_char(C).
+
+check_start(quote,39).
+check_start(num, C)  :- digit(C).
+check_start(symb,C)  :-
+    valid_char(C), not(digit(C)).
+
+check_end(_,[],[],[]) :- !.
+check_end(quote,[39|L],[39],L) :- !.
+check_end(num, [C|L],[],[C|L]) :- not(digit(C)),!.
+check_end(symb,[C|L],[],[C|L]) :- not(valid_char(C)).
+
+separator([C,D,E|L],[C,D,E],L) :- name(S,[C,D,E]),
+  member(S,['=:=','=\=','\==','@=<','@>=','=..','-->']),!.
+separator([C,D|L],[C,D],L) :- name(S,[C,D]),
+  member(S,[(':-'),'\+','->','\=','==','@<','@>','=<','>=',
+             '//']),!.
+separator([C|L],[C],L) :-
+  member(C,[44,40,41,58,91,93,124,43,45,42,47,59,61,60,62,94]).
+
+valid_char(C) :- letter(C); digit(C); C = 95.
+letter(C) :-  97 =< C, C =< 122; 65 =< C, C =< 90.
+digit(C)  :-  48 =< C, C =< 57.
+
+member(X,[X|_]).
+member(X,[_|T]) :- member(X,T).
+
+append([],L,L).
+append([H|T],L,[H|R]) :- append(T,L,R).
+
+%--------------------------------------------------------------------
+% DCG DEFINITION OF PROLOG TERMS AND RULES
+%--------------------------------------------------------------------
+term(T,VL,VL1) --> formal_term(T,VL,VL1).
+term(T,VL,VL1) --> infix_term(T,VL,VL1).
+
+formal_term(T,VL,VL1) --> variable(T,VL,VL1).
+formal_term(T,VL,VL1) --> constant(T,VL,VL1).
+formal_term(T,VL,VL1) --> list(T,VL,VL1).
+formal_term(T,VL,VL1) --> prefix_term(T,VL,VL1).
+
+variable(V,VL,VL1) -->
+    [X],{variable_name(X,V,VL,VL1)}.
+constant(T,VL,VL) -->
+    [X],{(constsymb(X,T);numbr(X,T))}.
+
+list([],VL,VL) --> ['[',']'].
+list([T|L],VL,VL1) --> ['['],
+    term(T,VL,VL2),tail(L,VL2,VL1).
+
+tail([],VL,VL) --> [']'].
+tail([T|L],VL,VL1) -->
+    [','],term(T,VL,VL2),tail(L,VL2,VL1).
+tail(L,VL,VL1) -->
+    ['|'],variable(L,VL,VL1),[']'].
+tail(L,VL,VL1) -->
+    ['|'],list(L,VL,VL1),[']'].
+
+prefix_term(T,VL,VL1) -->
+    functer(F),['('],
+    arguments(Args,VL,VL1),[')'],
+    {T =.. [F|Args]}.
+
+functer(X) -->  [X],{functsymb(X)}.
+
+arguments([Arg],VL,VL1) -->
+    term(Arg,VL,VL1).
+arguments([A|Args],VL,VL1) -->
+    term(A,VL,VL2),[','],
+    arguments(Args,VL2,VL1).
+
+infix_term(T,VL,VL1) --> rightas_term(T,VL,VL1).
+infix_term(T,VL,VL1) --> bracket_term(T,VL,VL1).
+
+rightas_term(T,VL,VL1) -->
+    formal_term(T,VL,VL1).
+rightas_term(T,VL,VL1) -->
+    formal_term(A,VL,VL2),[F],{operator(F)},
+    rightas_term(B,VL2,VL1),
+    {T =.. [F,A,B]}.
+
+bracket_term(T,VL,VL1) -->
+    ['('],rightas_term(T,VL,VL1),[')'].
+bracket_term(T,VL,VL1) -->
+    ['('],rightas_term(A,VL,VL2),[')',F],{operator(F)},
+    rightas_term(B,VL2,VL1),
+    {T =.. [F,A,B]}.
+bracket_term(T,VL,VL1) -->
+    ['('],rightas_term(A,VL,VL2),[')',F],{operator(F)},
+    bracket_term(B,VL2,VL1),
+    {T =.. [F,A,B]}.
+
+variable_name(X,V,VL,VL1) :-
+    name(X,[C|L]),
+    ((capital(C); C = 95, L \= []),
+        (member((X,V),VL),!,VL1 = VL;
+                   VL1 = [(X,V)|VL]);
+     C = 95,L = [],VL1 = [(X,V)|VL]).
+
+constsymb(X,X) :- atom_name(X).
+constsymb(X,T) :-	char_string(X,T).
+
+functsymb(X) :- atom_name(X); system(X/N);
+    member(X,[abs,exp,ln,log,sqrt,acos,asin,
+              atan,cos,sin,tan]).
+
+atom_name(X) :- name(X,[C|L]),97 =< C, C =< 122.
+char_string(X,T) :- name(X,[C|L]),
+    C = 39, string(L,R), name(T,R).
+
+capital(C) :- 65 =< C, C =< 90.
+
+string([39],[]).
+string([H|T],[H|R]) :- string(T,R).
+
+numbr(X,T) :- name(X,[C|L]),
+    (48 =< C, C =< 57),chars_int([C|L],0,T).
+
+chars_int([],N,N).
+chars_int([C|L],M,N) :-
+    M1 is 10*M + C - 48,chars_int(L,M1,N).
+
+operator(F) :-
+member(F,[is,':','+','-','*','/','=','<','>','^',mod]);
+member(F,['->','\=','==','@<','@>','=<','>=','//']);
+member(F,['=:=','=\=','\==','@=<','@>=','=..','-->']).
+
+rule((A :- B),VL,VL1) -->
+    head_term(A,VL,VL2),[(':-')],
+    conj_term(B,VL2,VL1).
+
+head_term(T,VL,VL1) --> constant(T,VL,VL1).
+head_term(T,VL,VL1) --> prefix_term(T,VL,VL1).
+
+conj_term(T,VL,VL1) --> term(T,VL,VL1).
+conj_term((A,B),VL,VL1) --> term(A,VL,VL2),[','],
+    conj_term(B,VL2,VL1).
+
+%-------------------------------------------------------------------
+% COLLECT THE VARIABLES OF A FORMULA
+%-------------------------------------------------------------------
+var_list(A,[]) :- ground(A),!.
+var_list(A,L) :-  collect_var(A,Q-[]),elim_dup(Q,[],L).
+
+collect_var(A,Q-Q) :- constant(A),!.
+collect_var(A,[A|Q]-Q) :- var(A), !.
+collect_var(A,Q) :- A =.. [P|Args],collect_vars(Args,Q).
+
+collect_vars([],Q-Q) :- !.
+collect_vars([A|As],Q-Qt) :-
+    collect_var(A,Q-Qs),collect_vars(As,Qs-Qt).
+
+constant(A) :- atom(A); integer(A); float(A).
+
+ground(A) :- copy(A,B), A == B.
+copy(A,B) :- assert(zzzz(A)),retract(zzzz(B)).
+
+% append([],L,L).
+% append([H|T],L,[H|T1]) :- append(T,L,T1).
+
+elim_dup([],_,[]).
+elim_dup([X|Xs],L,L1) :- occurs(X,L),!,elim_dup(Xs,L,L1).
+elim_dup([X|Xs],L,[X|L1]) :- elim_dup(Xs,[X|L],L1).
+
+occurs(X,[Y|Ys]) :- X == Y; occurs(X,Ys).
+
+%--------------------------------------------------------------------
+% THE META-INTERPRETER
+%--------------------------------------------------------------------
+prove(Goal,Depth,Result,Proof) :-
+     prove_branch(Goal,Depth,Result,Proof),
+     check_result(Goal,Depth,Result,Proof).
+prove(Goal,Depth,no,FailProof) :-
+     collect_failbranches(Goal,FailProof).
+
+prove_branch(true,D,yes,fact) :- !.
+prove_branch(A,0,lost,toofar) :- !.
+prove_branch(not(A),D,NegResult,NegProof) :-
+     prove(A,D,Result,Proof),!,
+     invert(A,Result,NegResult,Proof,NegProof).
+prove_branch(setof(X,G,L),D,Result,(setof(X,G,L) :- Proof)) :- !,
+     setof(p(X,D,R,P),prove(G,D,R,P),ListProof),
+     filter_proof(ListProof,Result,L,Proof).
+prove_branch((A;B),D,Result,Proof) :- !,
+     (prove_branch(A,D,Result,Proof);
+      prove_branch(B,D,Result,Proof)).
+prove_branch((A,B),D,Result,(ProofA,ProofB)) :- !,
+     prove_branch(A,D,ResultA,ProofA),
+     prove_conj(ResultA,B,D,Result,ProofB).
+prove_branch(A,D,Result,(A :- system:Result)) :-
+     syst(A),!,(A,Result = yes; Result = no).
+prove_branch(A,D,no,(A :- noclause)) :-
+     not(find_clause(A,B)),!.
+prove_branch(A,D,Result,(A :- Proof)) :-
+     find_clause(A,B),D1 is D-1,
+     detect_cut(B,B1,B2,Cut),
+     (Cut = yes,prove_branch(B1,D1,R1,Proof1),
+        (R1 \= yes,Result = R1,return_proof(Proof1,B2,Proof);
+         R1 = yes,!,prove_branch(B2,D1,Result,Proof2),
+                    conjunct(Proof1,Proof2,Proof));
+      Cut = no,prove_branch(B,D1,Result,Proof)).
+
+detect_cut(B,B1,B2,yes) :- cutin(B,B1,B2),!.
+detect_cut(_,_,_,no).
+
+cutin(!,!,true) :- !.
+cutin((!,B),!,B) :- !.
+cutin((A,!),(A,!),true) :- !.
+cutin((A,B),(A,As),Bs) :- cutin(B,As,Bs).
+
+return_proof(Proof1,B,Proof) :-
+     B = true,!, Proof1 = Proof;
+     conjunct(Proof1,(B : nottried),Proof).
+
+conjunct(A,fact,A) :- !.
+conjunct((A,As),L,(A,Bs)) :- !,conjunct(As,L,Bs).
+conjunct((A),L,(A,L)).
+
+invert(A,yes,no,SuccProof,(not(A) :- fails(SuccProof))).
+invert(A,no,yes,FailProof,(not(A) :- succeeds(FailProof))).
+
+prove_conj(yes,B,D,Result,Proof) :- !,prove_branch(B,D,Result,Proof).
+prove_conj(RA, B,D,RA,B:nottried).
+
+check_result(G,D,yes,_) :- !,
+     (maxdepth(D),!; collect_failbranches(G,_)).
+check_result(G,_,_,Proof) :- assert(failproof(G:Proof)),!,fail.
+
+collect_failbranches(G,[FailBranch|Rest]) :-
+     copy(G,G1),retract(failproof(G1:FailBranch)),!,
+     collect_failbranches(G,Rest).
+collect_failbranches(_,[]).
+
+syst(A) :- functor(A,F,N),
+          (system(F/N),!;
+           member(F,['!',var_list,eval,uninstantiated,
+                     instantiate,re_var_list])).
+
+filter_proof([p(X,D,no,P)],no,[],setnull(P)) :- !.
+filter_proof(ListProof,yes,L,setfull(LProof)) :-
+     filter(ListProof,[],L,LProof).
+
+filter([],_,[],[]) :- !.
+filter([p(X,_,R,_)|Rest],L1,L,LProof) :-
+     (R = no; member(X,L1)),!,filter(Rest,L1,L,LProof).
+filter([p(X,_,yes,P)|Rest],L1,[X|Xs],[P|Ps]) :-
+     filter(Rest,[X|L1],Xs,Ps).
+
+find_clause(A,B) :- clause(A,B).
+%find_clause(A,B) :-
+%     code_world(X,api),
+%     clause(A,B),
+%     code_world(_,X).
+
+maxdepth(20).
+
+%-------------------------------------------------------------------
+% THE META-DEBUGGER
+%-------------------------------------------------------------------
+find_error(0,(A :- B),Clause) :- !,
+     find_errclause(0,(A :- B),Clause).
+find_error(0,((A :- B),Rest),Clause) :- !,
+     (find_errclause(0,(A :- B),Clause),!;
+      find_error(0,Rest,Clause)).
+find_error(0,succeeds(FailProof),Clause) :- !,
+     find_error(1,FailProof,Clause).
+find_error(0,setfull(SetProof),Clause) :-
+     convert(SetProof,ConjProof),
+     find_error(0,ConjProof,Clause).
+
+find_errclause(R,(A :- B),Clause) :-
+     ask_user(A,R),!,
+     (find_error(R,B,Clause),!;
+      recollect_body(B,Body),Clause = (A :- Body)).
+
+ask_user(A,R) :-
+     nl,write('Do you expect the goal '),
+     write(A),write(' to be true? (y/n): '),
+     get0(C),
+     (C =:= 110+R*11,!; C =:= 110+11* (1-R),!,fail;
+      ask_user(A,R)).
+
+recollect_body(fact,true) :- !.
+recollect_body(noclause,nofact) :- !.
+recollect_body(toofar,nonterminate) :- !.
+recollect_body((B : nottried),B) :- !.
+recollect_body((B :- C),B) :- !.
+recollect_body(((B :- C),Rest),(B,Bs)) :-
+     recollect_body(Rest,Bs).
+
+convert([A|T],(A,S)) :- convert(T,S).
+convert([A],(A)).
+
+find_error(1,[Proof|Rest],Clause) :-
+     find_error(1,Proof,Clause);
+     find_error(1,Rest,Clause).
+
+find_error(1,(A :- B),Clause) :- !,
+     find_errclause(1,(A :- B),Clause).
+find_error(1,Proof,Clause) :-
+     convert(ListProof,Proof),
+     append(Left,[(A :- B)|C],ListProof),
+     (C = [(D : nottried)|_]; C = []),!,
+     find_errclause(1,(A :- B),Clause).
+find_error(1,fails(SuccProof),Clause) :- !,
+     find_error(0,SuccProof,Clause).
+find_error(1,setnull(SetProof),Clause) :-
+     find_error(1,SetProof,Clause).
+
+%-------------------------------------------------------------------
+% THE TRACER
+%-------------------------------------------------------------------
+tracex(true,D) :- !.
+tracex((A;B),D) :- !,(tracex(A,D); tracex(B,D)).
+tracex((A,B),D) :- !, tracex(A,D), tracex(B,D).
+tracex(A,D) :-
+     report(D,'CALL',A),
+     trace_goal(A,D),
+     report(D,'EXIT',A).
+tracex(A,D) :-
+     report(D,'FAIL',A),fail.
+
+trace_goal(A,D) :- syst(A),!,A.
+trace_goal(A,D) :- find_clause(A,B,D),D1 is D+1,
+     detect_cut(B,B1,B2,Cut),
+     (Cut = yes,tracex(B1,D1),!,tracex(B2,D1);
+      Cut = no, tracex(B,D1)).
+
+find_clause(A,B,D) :-
+     clause(A,B), report_redo(A,D).
+%find_clause(A,B,D) :-
+%     code_world(X,api),
+%     clause(A,B),
+%     code_world(_,X),
+%     report_redo(A,D).
+
+report_redo(A,D).
+report_redo(A,D) :- report(D,'REDO',A),fail.
+
+report(0,'EXIT',A) :- !,
+     nl,write('[0] EXIT: '),write(A),
+     nl,write(A),write(' -> '),
+     get0(C), C \= 59.
+report(Depth,Port,Goal) :-
+     nl,write([Depth]),write(' '),write(Port),write(': '),
+     write(Goal), write(' ? >'), (get0(C),(C=99;C=13),!; nl,abort).
+
+tracer('#').
+debuggeur('#').
+displayproof('#').
+
+%======================= END LNPROLOG ==============================
