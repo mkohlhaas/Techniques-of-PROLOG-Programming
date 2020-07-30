@@ -10,9 +10,7 @@
 %   ?- toy(X),likes(sue,X).
 %----------------------------------------------------
     likes(ann,X) :- toy(X),plays(ann,X).
+    likes(sue,Y) :- likes(ann,Y).
     toy(doll).
     toy(snoopy).
     plays(ann,snoopy).
-    likes(sue,Y) :- likes(ann,Y).
-
-
