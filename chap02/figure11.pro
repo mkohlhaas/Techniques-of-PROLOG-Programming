@@ -12,12 +12,38 @@ sum_tree(tree(Left,Node,Right),S) :-
     sum_tree(Right,S2),
     S is S1+S2+Node.
 
-sample(tree(tree(tree(tree(nil,6,nil),
-  2,
-  tree(tree(nil,13,nil),14,nil)),
-  15,
-  tree(tree(nil,16,nil),
-  17,
-  tree(nil,18,nil))),
-  20,
-  tree(tree(nil,19,nil),24,nil))).
+sample(
+  tree(
+    tree(
+      tree(
+        tree(
+          nil,          % after "tree(" comes a left tree
+          6,
+          nil),         % after node with a number (here 6) comes a right tree
+        2,
+        tree(
+          tree(
+            nil,
+            13,
+            nil),
+          14,
+          nil)),
+      15,
+      tree(
+        tree(
+          nil,
+          16,
+          nil),
+        17,
+        tree(
+          nil,
+          18,
+          nil))),       % ")" closes a tree
+    20,
+    tree(
+      tree(
+        nil,
+        19,
+        nil),
+      24,
+      nil))).

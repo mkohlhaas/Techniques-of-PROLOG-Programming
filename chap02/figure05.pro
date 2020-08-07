@@ -6,7 +6,6 @@
 %   ?- factorial(5,X).
 %   ?- factorial(6,X).
 %   ?- factorial(7,X).
-%
 % ---------------------------------------------------
 factorial(0,1).
 factorial(N,F) :-
